@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <title>Digital Native Focus Timer</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #0a0a0c;
+      --bg-panel: #111114;
+      --text-primary: #e8e6ed;
+      --text-muted: #6b6578;
+      --accent: #7c3aed;
+      --accent-soft: rgba(124, 58, 237, 0.35);
+      --accent-glow: rgba(139, 92, 246, 0.45);
+      --cyan: #22d3ee;
+      --cyan-glow: rgba(34, 211, 238, 0.35);
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --font: "DM Sans", system-ui, -apple-system, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      min-height: -webkit-fill-available;
+      font-family: var(--font);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: max(1.25rem, env(safe-area-inset-top, 0px));
+      padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+      padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+      background-image:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(124, 58, 237, 0.12), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 100% 100%, rgba(34, 211, 238, 0.06), transparent 45%),
+        radial-gradient(ellipse 60% 40% at 0% 80%, rgba(124, 58, 237, 0.05), transparent 40%);
+    }
+
+    .shell {
+      width: min(100%, 28rem);
+      margin-inline: auto;
+      flex-shrink: 0;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0 0 2.5rem;
+    }
+
+    .timer-wrap {
+      position: relative;
+      width: 100%;
+      margin: 0 0 2.75rem;
+      padding: 2rem 1.25rem 2rem;
+      border-radius: 1.25rem;
+      background: linear-gradient(165deg, rgba(20, 20, 26, 0.9) 0%, rgba(12, 12, 16, 0.95) 100%);
+      border: 1px solid var(--border-subtle);
+      box-shadow:
+        0 0 0 1px rgba(124, 58, 237, 0.08),
+        0 24px 48px -12px rgba(0, 0, 0, 0.55),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .timer-wrap::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.25), transparent 40%, rgba(34, 211, 238, 0.15));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      opacity: 0.85;
+    }
+
+    .ring-stack {
+      position: relative;
+      width: min(25rem, 91vw);
+      max-width: 100%;
+      margin-inline: auto;
+      aspect-ratio: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      isolation: isolate;
+      overflow: visible;
+    }
+
+    .ring-stack > .cityscape-wrap {
+      grid-area: 1 / 1;
+      z-index: 0;
+      align-self: stretch;
+      justify-self: stretch;
+      width: 100%;
+      height: 100%;
+      min-width: 0;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .ring-stack > .cityscape-wrap .cityscape-svg {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .ring-stack > .cityscape-wrap:not(.cityscape-wrap--inactive) .cityscape-svg {
+      opacity: 0.88;
+    }
+
+    .ring-stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      grid-area: 1 / 1;
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      min-width: 0;
+      min-height: 0;
+      isolation: isolate;
+      overflow: visible;
+    }
+
+    .ring-stage > .progress-svg,
+    .ring-stage > .ring-inner {
+      grid-area: 1 / 1;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    .progress-svg {
+      position: relative;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      -webkit-transform: rotate(-90deg);
+      -webkit-transform-origin: 50% 50%;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+      overflow: visible;
+    }
+
+    .ring-track {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.06);
+      stroke-width: 4;
+    }
+
+    .ring-progress {
+      fill: none;
+      stroke: url(#ringNeonGrad);
+      stroke-width: 4;
+      stroke-linecap: round;
+      filter: url(#ringNeonGlow);
+      transition: stroke-dashoffset 0.35s linear;
+    }
+
+    .ring-inner {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      align-self: stretch;
+      justify-self: stretch;
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      padding-inline: clamp(0.5rem, 3vw, 1.25rem);
+      box-sizing: border-box;
+      text-align: center;
+      pointer-events: none;
+      transform: translateZ(0);
+    }
+
+    .ring-inner .time,
+    .ring-inner .label {
+      pointer-events: auto;
+    }
+
+    .time {
+      display: inline-block;
+      min-width: 9ch;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(3.5rem, 14vw, 5.25rem);
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #f4f2f8 0%, #c4b8d8 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 60px var(--accent-glow);
+      filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.25));
+      position: relative;
+      z-index: 1;
+    }
+
+    .time--long {
+      font-size: clamp(2.65rem, 11vw, 4.35rem);
+      letter-spacing: -0.035em;
+    }
+
+    .time.running {
+      animation: pulse-soft 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-soft {
+      0%, 100% { filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.25)); }
+      50% { filter: drop-shadow(0 0 28px rgba(34, 211, 238, 0.2)); }
+    }
+
+    .label {
+      margin-top: 0.875rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.875rem;
+      justify-content: center;
+      align-items: center;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      border: none;
+      border-radius: 999px;
+      padding: 0.875rem 1.75rem;
+      transition:
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        box-shadow 0.25s ease,
+        background 0.25s ease,
+        color 0.2s ease;
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 3px;
+    }
+
+    .btn-primary {
+      min-width: 10.5rem;
+      color: var(--text-primary);
+      background: linear-gradient(145deg, rgba(124, 58, 237, 0.35) 0%, rgba(88, 28, 135, 0.5) 100%);
+      border: 1px solid rgba(167, 139, 250, 0.35);
+      box-shadow:
+        0 0 24px var(--accent-soft),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(145deg, rgba(124, 58, 237, 0.5) 0%, rgba(88, 28, 135, 0.65) 100%);
+      box-shadow:
+        0 0 32px rgba(124, 58, 237, 0.45),
+        0 8px 24px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-secondary:hover {
+      color: var(--text-primary);
+      border-color: rgba(34, 211, 238, 0.25);
+      background: rgba(34, 211, 238, 0.08);
+      box-shadow:
+        0 0 20px var(--cyan-glow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary:active {
+      transform: translateY(0);
+    }
+
+    .fluid-dial-wrap {
+      width: 100%;
+      max-width: min(25rem, 91vw);
+      margin: 0 auto 1.5rem;
+      padding: 0 0.25rem;
+      box-sizing: border-box;
+    }
+
+    .fluid-dial-label {
+      display: block;
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .fluid-dial {
+      --fill: 17%;
+      display: block;
+      width: 100%;
+      height: 2.75rem;
+      margin: 0;
+      padding: 0;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .fluid-dial:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .fluid-dial:focus {
+      outline: none;
+    }
+
+    .fluid-dial:focus-visible {
+      outline: 2px solid var(--cyan);
+      outline-offset: 6px;
+      border-radius: 999px;
+    }
+
+    .fluid-dial::-webkit-slider-runnable-track {
+      height: 0.75rem;
+      border-radius: 999px;
+      background: linear-gradient(
+        90deg,
+        rgba(34, 211, 238, 0.42) 0%,
+        rgba(124, 58, 237, 0.38) var(--fill),
+        rgba(255, 255, 255, 0.06) var(--fill),
+        rgba(255, 255, 255, 0.06) 100%
+      );
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .fluid-dial::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 1.4rem;
+      height: 1.4rem;
+      margin-top: -0.325rem;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #f0eef5 0%, #b4aac4 100%);
+      border: 2px solid rgba(124, 58, 237, 0.55);
+      box-shadow:
+        0 0 14px rgba(34, 211, 238, 0.5),
+        0 2px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .fluid-dial::-moz-range-track {
+      height: 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+    }
+
+    .fluid-dial::-moz-range-progress {
+      height: 0.75rem;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(34, 211, 238, 0.45), rgba(124, 58, 237, 0.4));
+    }
+
+    .fluid-dial::-moz-range-thumb {
+      width: 1.4rem;
+      height: 1.4rem;
+      border-radius: 50%;
+      border: 2px solid rgba(124, 58, 237, 0.55);
+      background: linear-gradient(145deg, #f0eef5 0%, #b4aac4 100%);
+      box-shadow:
+        0 0 14px rgba(34, 211, 238, 0.5),
+        0 2px 10px rgba(0, 0, 0, 0.45);
+    }
+
+    .cityscape-wrap {
+      isolation: isolate;
+      --l1: 0;
+      --l2: 0;
+      --l3: 0;
+      --l4: 0;
+      transition:
+        filter 0.55s ease,
+        opacity 0.45s ease;
+    }
+
+    .cityscape-wrap--inactive {
+      filter: brightness(0.35) saturate(0.3);
+    }
+
+    .cityscape-wrap--inactive .cityscape-svg {
+      opacity: 0.45;
+    }
+
+    .cityscape-svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      overflow: visible;
+    }
+
+    .city-base {
+      fill: none;
+      stroke: rgba(45, 42, 58, 0.75);
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .city-layer {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition:
+        opacity 0.65s ease,
+        stroke 0.55s ease,
+        filter 0.55s ease;
+    }
+
+    .city-layer--low {
+      stroke-width: 1.35;
+      stroke: #22d3ee;
+      opacity: var(--l1);
+      filter: drop-shadow(0 0 calc(3px + var(--l1) * 5px) rgba(34, 211, 238, 0.55));
+    }
+
+    .city-layer--mid {
+      stroke-width: 1.35;
+      stroke: #a78bfa;
+      opacity: var(--l2);
+      filter: drop-shadow(0 0 calc(2px + var(--l2) * 6px) rgba(167, 139, 250, 0.55));
+    }
+
+    .city-layer--high {
+      stroke-width: 1.5;
+      stroke: #c4b5fd;
+      opacity: var(--l3);
+      filter: drop-shadow(0 0 calc(2px + var(--l3) * 8px) rgba(196, 181, 253, 0.6));
+    }
+
+    .city-layer--data {
+      stroke-width: 1.1;
+      stroke: #22d3ee;
+      opacity: calc(var(--l3) * 0.85 + var(--l4) * 0.15);
+      filter: drop-shadow(0 0 calc(2px + var(--l4) * 6px) rgba(34, 211, 238, 0.45));
+    }
+
+    .city-layer--sky {
+      stroke-width: 1;
+      stroke: #7c3aed;
+      opacity: var(--l4);
+      filter: drop-shadow(0 0 calc(4px + var(--l4) * 12px) rgba(124, 58, 237, 0.55));
+    }
+
+    .cityscape-wrap--complete:not(.cityscape-wrap--inactive) .cityscape-svg {
+      animation: cityscape-pulse 2.2s ease-in-out infinite;
+    }
+
+    @keyframes cityscape-pulse {
+      0%,
+      100% {
+        filter: drop-shadow(0 0 12px rgba(124, 58, 237, 0.35)) drop-shadow(0 0 24px rgba(34, 211, 238, 0.2));
+      }
+      50% {
+        filter: drop-shadow(0 0 22px rgba(34, 211, 238, 0.45)) drop-shadow(0 0 40px rgba(167, 139, 250, 0.35));
+      }
+    }
+
+    .cityscape-wrap--glitch {
+      animation: cityscape-glitch 0.48s steps(2, end);
+    }
+
+    @keyframes cityscape-glitch {
+      0% {
+        transform: translate(0);
+        filter: brightness(1);
+      }
+      15% {
+        transform: translate(-3px, 1px) skewX(-1deg);
+        filter: brightness(1.2) drop-shadow(0 0 10px rgba(255, 30, 80, 0.95));
+      }
+      35% {
+        transform: translate(4px, -2px) skewX(2deg);
+        filter: brightness(0.85) drop-shadow(0 0 14px rgba(255, 40, 60, 0.85));
+      }
+      55% {
+        transform: translate(-2px, 2px);
+        filter: drop-shadow(0 0 8px rgba(255, 20, 40, 0.7));
+      }
+      75% {
+        transform: translate(2px, 0);
+        filter: brightness(1.05);
+      }
+      100% {
+        transform: translate(0);
+        filter: brightness(1);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <h1>Focus Timer</h1>
+    <div class="timer-wrap">
+      <div class="fluid-dial-wrap">
+        <label class="fluid-dial-label" for="duration-slider">Session length</label>
+        <input
+          type="range"
+          id="duration-slider"
+          class="fluid-dial"
+          min="60"
+          max="14400"
+          step="1"
+          value="1500"
+          aria-valuemin="60"
+          aria-valuemax="14400"
+          aria-label="Session duration, 1 minute to 4 hours"
+        />
+      </div>
+      <div class="ring-stack">
+        <div class="cityscape-wrap cityscape-wrap--inactive" id="cityscape-wrap" aria-hidden="true">
+          <svg
+            class="cityscape-svg"
+            viewBox="0 0 320 100"
+            preserveAspectRatio="xMidYMid slice"
+            xmlns="http://www.w3.org/2000/svg"
+            focusable="false"
+          >
+            <g class="city-base" aria-hidden="true">
+              <path d="M12 88h296" />
+            </g>
+            <g class="city-layer city-layer--low">
+              <path d="M24 88V58h26V88M58 88V64h22V88M88 88V70h20V88M118 88V62h24V88M152 88V68h18V88" />
+              <path d="M182 88V72h16V88M208 88V65h22V88M238 88V60h20V88M268 88V68h18V88" />
+            </g>
+            <g class="city-layer city-layer--mid">
+              <path d="M32 58V40h18v18M62 52V36h16v16M92 50V32h20v18M128 48V34h22v14M162 46V30h20v16M198 50V35h18v15M228 48V33h20v15M262 52V38h16v14" />
+              <path d="M44 44h8v8h-8zM118 38h8v8h-8zM210 36h8v8h-8z" />
+            </g>
+            <g class="city-layer city-layer--high">
+              <path d="M40 40V18h12v22M76 36V14h14v22M112 34V12h16v22M148 32V10h18v22M188 36V15h14v21M224 34V11h16v23M256 38V16h14v22" />
+              <path d="M100 28V8h10v20M176 26V6h12v20M232 24V5h11v19" />
+            </g>
+            <g class="city-layer city-layer--data">
+              <path d="M20 32h80M100 26h120M230 30h70M36 20h60M200 18h84M48 14h90" stroke-dasharray="4 6" />
+              <path d="M160 8v18M80 12v10M240 10v14" />
+            </g>
+            <g class="city-layer city-layer--sky">
+              <path d="M16 12h288M24 6h260" opacity="0.9" />
+              <path d="M48 4l6 8M160 2l8 10M272 5l-6 8" />
+              <path d="M12 88h296" />
+            </g>
+          </svg>
+        </div>
+      <div class="ring-stage">
+        <svg class="progress-svg" viewBox="0 0 120 120" aria-hidden="true">
+          <defs>
+            <linearGradient id="ringNeonGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#22d3ee" />
+              <stop offset="55%" stop-color="#a78bfa" />
+              <stop offset="100%" stop-color="#7c3aed" />
+            </linearGradient>
+            <filter id="ringNeonGlow" x="-45%" y="-45%" width="190%" height="190%" color-interpolation-filters="sRGB">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="2.65" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+          <circle class="ring-track" cx="60" cy="60" r="54" />
+          <circle id="ring-progress" class="ring-progress" cx="60" cy="60" r="54" />
+        </svg>
+        <div class="ring-inner">
+          <div id="display" class="time" aria-live="polite">25:00</div>
+          <div class="label" id="status">Ready</div>
+        </div>
+      </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn-primary" id="toggle" aria-pressed="false">Start</button>
+      <button type="button" class="btn-secondary" id="reset">Reset</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const DEFAULT_SECONDS = 25 * 60;
+      const MIN_SECONDS = 60;
+      const MAX_SECONDS = 4 * 60 * 60;
+      const display = document.getElementById("display");
+      const statusEl = document.getElementById("status");
+      const toggleBtn = document.getElementById("toggle");
+      const resetBtn = document.getElementById("reset");
+      const ringProgress = document.getElementById("ring-progress");
+      const durationSlider = document.getElementById("duration-slider");
+
+      let sessionTotalSeconds = DEFAULT_SECONDS;
+      let remainingSeconds = DEFAULT_SECONDS;
+      let lastCustomDurationSeconds = DEFAULT_SECONDS;
+      let intervalId = null;
+      let running = false;
+      let ringLength = 0;
+
+      /**
+       * Magnetic snap: 1–60 min → 1-minute steps; >60 min up to 4 h → 5-minute steps.
+       * All snapped durations are multiples of 60 s (seconds display :00 when idle).
+       */
+      function snapDurationSeconds(rawSeconds) {
+        const raw = Math.min(
+          MAX_SECONDS,
+          Math.max(MIN_SECONDS, Math.round(Number(rawSeconds)))
+        );
+        if (raw <= 60 * 60) {
+          const mins = raw / 60;
+          const snappedMin = Math.max(1, Math.min(60, Math.round(mins)));
+          return snappedMin * 60;
+        }
+        const mins = raw / 60;
+        let snappedMin = Math.round(mins / 5) * 5;
+        if (snappedMin <= 60) {
+          snappedMin = 65;
+        }
+        snappedMin = Math.min(240, snappedMin);
+        return snappedMin * 60;
+      }
+
+      function parseDurationSeconds() {
+        const v = parseInt(durationSlider.value, 10);
+        const raw = Number.isNaN(v) ? MIN_SECONDS : v;
+        return snapDurationSeconds(raw);
+      }
+
+      function setSliderFromSeconds(sec) {
+        const s = snapDurationSeconds(sec);
+        durationSlider.value = String(s);
+        updateSliderFill();
+      }
+
+      function updateSliderFill() {
+        const min = Number(durationSlider.min);
+        const max = Number(durationSlider.max);
+        const v = Number(durationSlider.value);
+        const pct = ((v - min) / (max - min)) * 100;
+        durationSlider.style.setProperty("--fill", pct + "%");
+        durationSlider.setAttribute("aria-valuenow", String(v));
+      }
+
+      function isPausedState() {
+        return !running && remainingSeconds > 0 && remainingSeconds < sessionTotalSeconds;
+      }
+
+      function setSliderDisabled(disabled) {
+        durationSlider.disabled = disabled;
+      }
+
+      function formatTime(remainingSec, sessionTotalSec) {
+        const useHms = sessionTotalSec >= 3600;
+        if (useHms) {
+          const h = Math.floor(remainingSec / 3600);
+          const m = Math.floor((remainingSec % 3600) / 60);
+          const s = remainingSec % 60;
+          return (
+            String(h).padStart(2, "0") +
+            ":" +
+            String(m).padStart(2, "0") +
+            ":" +
+            String(s).padStart(2, "0")
+          );
+        }
+        const m = Math.floor(remainingSec / 60);
+        const s = remainingSec % 60;
+        return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+      }
+
+      function updateRing() {
+        const denom = sessionTotalSeconds > 0 ? sessionTotalSeconds : 1;
+        const remaining = remainingSeconds / denom;
+        ringProgress.style.strokeDasharray = String(ringLength);
+        ringProgress.style.strokeDashoffset = String(ringLength * (1 - remaining));
+      }
+
+      function citySeg(frac, start, end) {
+        if (frac <= start) return 0;
+        if (frac >= end) return 1;
+        return (frac - start) / (end - start);
+      }
+
+      function updateCityscape() {
+        const wrap = document.getElementById("cityscape-wrap");
+        if (!wrap) return;
+        const total = sessionTotalSeconds > 0 ? sessionTotalSeconds : 1;
+        const elapsed = (total - remainingSeconds) / total;
+        const f = Math.min(1, Math.max(0, elapsed));
+
+        const idleReady =
+          !running &&
+          remainingSeconds > 0 &&
+          remainingSeconds === sessionTotalSeconds;
+
+        wrap.classList.toggle("cityscape-wrap--inactive", idleReady);
+
+        if (idleReady) {
+          wrap.style.setProperty("--l1", "0");
+          wrap.style.setProperty("--l2", "0");
+          wrap.style.setProperty("--l3", "0");
+          wrap.style.setProperty("--l4", "0");
+          wrap.classList.remove("cityscape-wrap--complete");
+          return;
+        }
+
+        if (remainingSeconds === 0) {
+          wrap.style.setProperty("--l1", "1");
+          wrap.style.setProperty("--l2", "1");
+          wrap.style.setProperty("--l3", "1");
+          wrap.style.setProperty("--l4", "1");
+          wrap.classList.add("cityscape-wrap--complete");
+          return;
+        }
+
+        wrap.classList.remove("cityscape-wrap--complete");
+        wrap.style.setProperty("--l1", citySeg(f, 0, 0.25).toFixed(4));
+        wrap.style.setProperty("--l2", citySeg(f, 0.25, 0.5).toFixed(4));
+        wrap.style.setProperty("--l3", citySeg(f, 0.5, 0.75).toFixed(4));
+        wrap.style.setProperty("--l4", citySeg(f, 0.75, 1).toFixed(4));
+      }
+
+      function triggerCityGlitch() {
+        const wrap = document.getElementById("cityscape-wrap");
+        if (!wrap) return;
+        wrap.classList.remove("cityscape-wrap--glitch");
+        wrap.offsetWidth;
+        wrap.classList.add("cityscape-wrap--glitch");
+        window.setTimeout(function () {
+          wrap.classList.remove("cityscape-wrap--glitch");
+        }, 500);
+      }
+
+      function render() {
+        display.textContent = formatTime(remainingSeconds, sessionTotalSeconds);
+        display.classList.toggle("time--long", sessionTotalSeconds >= 3600);
+        updateRing();
+        updateCityscape();
+      }
+
+      function setRunning(next) {
+        running = next;
+        display.classList.toggle("running", running);
+        toggleBtn.textContent = running ? "Pause" : "Start";
+        toggleBtn.setAttribute("aria-pressed", String(running));
+        setSliderDisabled(running || isPausedState());
+        if (running) {
+          statusEl.textContent = "Focusing";
+        } else if (remainingSeconds === 0) {
+          statusEl.textContent = "Session complete";
+        } else if (remainingSeconds < sessionTotalSeconds) {
+          statusEl.textContent = "Paused";
+        } else {
+          statusEl.textContent = "Ready";
+        }
+      }
+
+      function tick() {
+        if (remainingSeconds <= 0) {
+          clearInterval(intervalId);
+          intervalId = null;
+          setRunning(false);
+          statusEl.textContent = "Session complete";
+          return;
+        }
+        remainingSeconds -= 1;
+        render();
+        if (remainingSeconds === 0) {
+          clearInterval(intervalId);
+          intervalId = null;
+          setRunning(false);
+          statusEl.textContent = "Session complete";
+        }
+      }
+
+      function start() {
+        if (intervalId) return;
+        intervalId = setInterval(tick, 1000);
+        setRunning(true);
+      }
+
+      function pause() {
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        setRunning(false);
+      }
+
+      function applyDurationFromSlider() {
+        const next = parseDurationSeconds();
+        sessionTotalSeconds = next;
+        remainingSeconds = next;
+        lastCustomDurationSeconds = next;
+        setSliderFromSeconds(next);
+        render();
+      }
+
+      function onSliderInput() {
+        if (running || isPausedState()) return;
+        applyDurationFromSlider();
+      }
+
+      durationSlider.addEventListener("input", onSliderInput);
+      durationSlider.addEventListener("change", onSliderInput);
+
+      toggleBtn.addEventListener("click", function () {
+        if (running) {
+          pause();
+          return;
+        }
+        if (isPausedState()) {
+          start();
+          return;
+        }
+        const next = parseDurationSeconds();
+        sessionTotalSeconds = next;
+        remainingSeconds = next;
+        lastCustomDurationSeconds = next;
+        setSliderFromSeconds(next);
+        render();
+        start();
+      });
+
+      resetBtn.addEventListener("click", function () {
+        const midCycle =
+          running ||
+          (remainingSeconds > 0 && remainingSeconds < sessionTotalSeconds);
+        if (midCycle) {
+          triggerCityGlitch();
+        }
+        pause();
+        sessionTotalSeconds = lastCustomDurationSeconds;
+        remainingSeconds = lastCustomDurationSeconds;
+        setSliderFromSeconds(lastCustomDurationSeconds);
+        render();
+        statusEl.textContent = "Ready";
+        setSliderDisabled(false);
+      });
+
+      ringLength = ringProgress.getTotalLength();
+      ringProgress.style.strokeDasharray = String(ringLength);
+      setSliderFromSeconds(DEFAULT_SECONDS);
+      sessionTotalSeconds = parseDurationSeconds();
+      remainingSeconds = sessionTotalSeconds;
+      lastCustomDurationSeconds = sessionTotalSeconds;
+      updateSliderFill();
+      render();
+    })();
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    }
+  </script>
+</body>
+</html>
